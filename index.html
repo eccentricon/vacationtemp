@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cool Destination Finder</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font and minor style adjustments */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans antialiased text-slate-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-900 tracking-tight">Cool Destination Finder</h1>
+            <p class="mt-2 text-lg text-slate-600">Find your perfect getaway based on your ideal temperature.</p>
+        </header>
+
+        <!-- Input Controls -->
+        <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-200 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
+                
+                <!-- Start Date -->
+                <div>
+                    <label for="start-date" class="block text-sm font-medium text-slate-600 mb-1">Start Date</label>
+                    <input type="date" id="start-date" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                </div>
+                
+                <!-- End Date -->
+                <div>
+                    <label for="end-date" class="block text-sm font-medium text-slate-600 mb-1">End Date</label>
+                    <input type="date" id="end-date" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                </div>
+
+                <!-- Max Temperature -->
+                <div>
+                    <label for="max-temp" class="block text-sm font-medium text-slate-600 mb-1">Max Temp (°F)</label>
+                    <input type="number" id="max-temp" placeholder="e.g., 75" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="md:col-span-3 lg:col-span-2 grid grid-cols-2 gap-3">
+                   <button id="list-btn" class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-transform transform hover:scale-105">List</button>
+                   <button id="more-btn" class="w-full bg-slate-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-transform transform hover:scale-105">More</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Results Area -->
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+            <!-- Recommendations List -->
+            <div class="lg:col-span-1">
+                <h2 class="text-2xl font-bold mb-4 text-slate-800">Top 5 Suggestions</h2>
+                <div id="error-message" class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg mb-4" role="alert"></div>
+                <div id="recommendations-list" class="space-y-3">
+                    <p class="text-slate-500 p-4 bg-white rounded-lg">No recommendations to show yet. Press "List" to begin.</p>
+                </div>
+            </div>
+          
+            <!-- Map View -->
+            <div class="lg:col-span-2 h-80 md:h-[500px] bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+                <iframe id="map-iframe" title="Google Maps" src="https://maps.google.com/maps?q=world&t=&z=1&ie=UTF8&iwloc=&output=embed" class="w-full h-full border-0" allowfullscreen="" loading="lazy"></iframe>
+            </div>
+          
+        </main>
+    </div>
+
+    <script>
+        // --- Data: Average monthly high temperatures (°F) for various world cities ---
+        const cityData = [
+          { city: "Sydney", country: "Australia", avgHighs: { 1: 79, 2: 79, 3: 77, 4: 73, 5: 68, 6: 64, 7: 63, 8: 66, 9: 70, 10: 73, 11: 75, 12: 78 } },
+          { city: "Cairo", country: "Egypt", avgHighs: { 1: 66, 2: 69, 3: 74, 4: 82, 5: 90, 6: 94, 7: 95, 8: 95, 9: 90, 10: 85, 11: 76, 12: 68 } },
+          { city: "Cape Town", country: "South Africa", avgHighs: { 1: 79, 2: 79, 3: 77, 4: 73, 5: 68, 6: 64, 7: 63, 8: 64, 9: 66, 10: 70, 11: 73, 12: 77 } },
+          { city: "Rio de Janeiro", country: "Brazil", avgHighs: { 1: 86, 2: 86, 3: 84, 4: 82, 5: 79, 6: 78, 7: 77, 8: 78, 9: 78, 10: 79, 11: 81, 12: 84 } },
+          { city: "Tokyo", country: "Japan", avgHighs: { 1: 50, 2: 51, 3: 57, 4: 66, 5: 74, 6: 78, 7: 85, 8: 88, 9: 81, 10: 71, 11: 62, 12: 54 } },
+          { city: "London", country: "United Kingdom", avgHighs: { 1: 47, 2: 48, 3: 53, 4: 58, 5: 64, 6: 70, 7: 74, 8: 73, 9: 67, 10: 59, 11: 52, 12: 48 } },
+          { city: "Paris", country: "France", avgHighs: { 1: 46, 2: 48, 3: 55, 4: 61, 5: 68, 6: 73, 7: 77, 8: 77, 9: 70, 10: 61, 11: 52, 12: 47 } },
+          { city: "Rome", country: "Italy", avgHighs: { 1: 54, 2: 56, 3: 61, 4: 66, 5: 74, 6: 82, 7: 87, 8: 87, 9: 80, 10: 71, 11: 61, 12: 55 } },
+          { city: "Bangkok", country: "Thailand", avgHighs: { 1: 90, 2: 92, 3: 94, 4: 95, 5: 93, 6: 91, 7: 90, 8: 89, 9: 89, 10: 88, 11: 88, 12: 88 } },
+          { city: "Dubai", country: "UAE", avgHighs: { 1: 75, 2: 77, 3: 82, 4: 91, 5: 99, 6: 102, 7: 105, 8: 105, 9: 100, 10: 94, 11: 86, 12: 79 } },
+          { city: "Singapore", country: "Singapore", avgHighs: { 1: 87, 2: 88, 3: 89, 4: 89, 5: 89, 6: 88, 7: 88, 8: 88, 9: 88, 10: 88, 11: 87, 12: 86 } },
+          { city: "New York", country: "USA", avgHighs: { 1: 39, 2: 42, 3: 50, 4: 61, 5: 71, 6: 80, 7: 85, 8: 83, 9: 76, 10: 64, 11: 54, 12: 44 } },
+          { city: "Los Angeles", country: "USA", avgHighs: { 1: 68, 2: 68, 3: 70, 4: 72, 5: 74, 6: 78, 7: 82, 8: 84, 9: 83, 10: 79, 11: 73, 12: 68 } },
+          { city: "Vancouver", country: "Canada", avgHighs: { 1: 43, 2: 46, 3: 51, 4: 57, 5: 63, 6: 68, 7: 72, 8: 72, 9: 66, 10: 56, 11: 48, 12: 43 } },
+          { city: "Mexico City", country: "Mexico", avgHighs: { 1: 70, 2: 73, 3: 77, 4: 79, 5: 79, 6: 76, 7: 74, 8: 74, 9: 74, 10: 73, 11: 71, 12: 70 } },
+          { city: "Buenos Aires", country: "Argentina", avgHighs: { 1: 86, 2: 84, 3: 80, 4: 73, 5: 66, 6: 61, 7: 60, 8: 64, 9: 67, 10: 72, 11: 78, 12: 83 } },
+          { city: "Lima", country: "Peru", avgHighs: { 1: 80, 2: 81, 3: 81, 4: 78, 5: 74, 6: 70, 7: 68, 8: 67, 9: 68, 10: 70, 11: 73, 12: 77 } },
+          { city: "Honolulu", country: "USA", avgHighs: { 1: 80, 2: 80, 3: 81, 4: 83, 5: 85, 6: 87, 7: 88, 8: 89, 9: 89, 10: 87, 11: 84, 12: 82 } },
+          { city: "San Francisco", country: "USA", avgHighs: { 1: 57, 2: 60, 3: 61, 4: 63, 5: 64, 6: 66, 7: 67, 8: 68, 9: 70, 10: 69, 11: 63, 12: 58 } },
+          { city: "Lisbon", country: "Portugal", avgHighs: { 1: 59, 2: 61, 3: 65, 4: 68, 5: 72, 6: 78, 7: 82, 8: 82, 9: 79, 10: 72, 11: 65, 12: 60 } },
+          { city: "Madrid", country: "Spain", avgHighs: { 1: 50, 2: 54, 3: 61, 4: 65, 5: 73, 6: 84, 7: 91, 8: 90, 9: 80, 10: 68, 11: 56, 12: 50 } },
+          { city: "Barcelona", country: "Spain", avgHighs: { 1: 56, 2: 57, 3: 61, 4: 65, 5: 71, 6: 78, 7: 83, 8: 84, 9: 78, 10: 71, 11: 62, 12: 57 } },
+          { city: "Dublin", country: "Ireland", avgHighs: { 1: 47, 2: 47, 3: 51, 4: 55, 5: 60, 6: 65, 7: 68, 8: 67, 9: 63, 10: 56, 11: 50, 12: 47 } },
+          { city: "Amsterdam", country: "Netherlands", avgHighs: { 1: 42, 2: 43, 3: 49, 4: 55, 5: 62, 6: 67, 7: 70, 8: 70, 9: 65, 10: 57, 11: 48, 12: 44 } },
+          { city: "Prague", country: "Czech Republic", avgHighs: { 1: 36, 2: 39, 3: 48, 4: 57, 5: 66, 6: 72, 7: 75, 8: 75, 9: 66, 10: 55, 11: 44, 12: 38 } },
+          { city: "Vienna", country: "Austria", avgHighs: { 1: 37, 2: 41, 3: 50, 4: 61, 5: 70, 6: 75, 7: 79, 8: 78, 9: 69, 10: 58, 11: 46, 12: 39 } },
+          { city: "Zurich", country: "Switzerland", avgHighs: { 1: 37, 2: 40, 3: 50, 4: 57, 5: 66, 6: 72, 7: 76, 8: 75, 9: 67, 10: 57, 11: 45, 12: 38 } },
+          { city: "Copenhagen", country: "Denmark", avgHighs: { 1: 37, 2: 37, 3: 42, 4: 51, 5: 61, 6: 67, 7: 71, 8: 70, 9: 63, 10: 54, 11: 45, 12: 40 } },
+          { city: "Stockholm", country: "Sweden", avgHighs: { 1: 31, 2: 31, 3: 38, 4: 48, 5: 59, 6: 67, 7: 72, 8: 69, 9: 60, 10: 49, 11: 40, 12: 34 } },
+          { city: "Helsinki", country: "Finland", avgHighs: { 1: 26, 2: 25, 3: 33, 4: 45, 5: 58, 6: 66, 7: 71, 8: 67, 9: 58, 10: 46, 11: 37, 12: 30 } },
+          { city: "Reykjavik", country: "Iceland", avgHighs: { 1: 36, 2: 37, 3: 38, 4: 43, 5: 49, 6: 54, 7: 57, 8: 56, 9: 50, 10: 44, 11: 38, 12: 36 } },
+          { city: "Seoul", country: "South Korea", avgHighs: { 1: 35, 2: 40, 3: 51, 4: 64, 5: 74, 6: 81, 7: 84, 8: 86, 9: 78, 10: 67, 11: 52, 12: 40 } },
+          { city: "Kyoto", country: "Japan", avgHighs: { 1: 48, 2: 49, 3: 56, 4: 66, 5: 75, 6: 81, 7: 88, 8: 91, 9: 83, 10: 72, 11: 62, 12: 52 } },
+          { city: "Auckland", country: "New Zealand", avgHighs: { 1: 74, 2: 75, 3: 72, 4: 68, 5: 63, 6: 59, 7: 57, 8: 59, 9: 61, 10: 64, 11: 67, 12: 71 } },
+          { city: "Marrakech", country: "Morocco", avgHighs: { 1: 65, 2: 68, 3: 73, 4: 77, 5: 83, 6: 91, 7: 99, 8: 99, 9: 90, 10: 81, 11: 72, 12: 66 } },
+        ];
+
+        // --- DOM Elements ---
+        const startDateInput = document.getElementById('start-date');
+        const endDateInput = document.getElementById('end-date');
+        const maxTempInput = document.getElementById('max-temp');
+        const listBtn = document.getElementById('list-btn');
+        const moreBtn = document.getElementById('more-btn');
+        const recommendationsList = document.getElementById('recommendations-list');
+        const errorMessageDiv = document.getElementById('error-message');
+        const mapIframe = document.getElementById('map-iframe');
+
+        // --- App State ---
+        let availableCities = [];
+        let currentIndex = 0;
+        let selectedCity = null;
+
+        // --- Helper Functions ---
+        const formatDateForInput = (date) => {
+            const d = new Date(date);
+            let month = '' + (d.getMonth() + 1);
+            let day = '' + d.getDate();
+            const year = d.getFullYear();
+            if (month.length < 2) month = '0' + month;
+            if (day.length < 2) day = '0' + day;
+            return [year, month, day].join('-');
+        };
+
+        const setErrorMessage = (message) => {
+            if (message) {
+                errorMessageDiv.textContent = message;
+                errorMessageDiv.classList.remove('hidden');
+            } else {
+                errorMessageDiv.classList.add('hidden');
+            }
+        };
+
+        const updateMap = () => {
+            let src = 'https://maps.google.com/maps?q=world&t=&z=1&ie=UTF8&iwloc=&output=embed';
+            if (selectedCity) {
+                const query = `${selectedCity.city}, ${selectedCity.country}`;
+                src = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=&z=10&ie=UTF8&iwloc=&output=embed`;
+            }
+            mapIframe.src = src;
+        };
+        
+        const renderRecommendations = (recs) => {
+            recommendationsList.innerHTML = ''; // Clear existing list
+            
+            if (recs.length === 0 && !errorMessageDiv.textContent) {
+                recommendationsList.innerHTML = '<p class="text-slate-500 p-4 bg-white rounded-lg">No destinations found. Try a higher temperature!</p>';
+                return;
+            }
+
+            recs.forEach(city => {
+                const cityDiv = document.createElement('div');
+                cityDiv.innerHTML = `
+                    <div class="flex items-center">
+                        <svg class="h-6 w-6 mr-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        <div>
+                            <p class="font-bold text-lg text-slate-900">${city.city}</p>
+                            <p class="text-slate-600">${city.country}</p>
+                        </div>
+                    </div>
+                `;
+                cityDiv.className = 'p-4 rounded-lg cursor-pointer transition-all duration-200 border-2 bg-white hover:bg-slate-100 hover:border-slate-300 border-transparent';
+                
+                // Add click listener to select city
+                cityDiv.addEventListener('click', () => {
+                    selectedCity = city;
+                    // Visually update the selected item
+                    document.querySelectorAll('#recommendations-list > div').forEach(div => {
+                        div.classList.remove('bg-blue-100', 'border-blue-500', 'shadow-md', 'scale-105');
+                        div.querySelector('svg').classList.replace('text-blue-600', 'text-slate-500');
+                    });
+                    cityDiv.classList.add('bg-blue-100', 'border-blue-500', 'shadow-md', 'scale-105');
+                    cityDiv.querySelector('svg').classList.replace('text-slate-500', 'text-blue-600');
+                    updateMap();
+                });
+                
+                recommendationsList.appendChild(cityDiv);
+            });
+            
+            // Auto-select the first item in the new list
+            if (recs.length > 0) {
+                recommendationsList.children[0].click();
+            }
+        };
+
+        const getRecommendations = () => {
+            setErrorMessage('');
+            
+            const startDate = startDateInput.value || formatDateForInput(new Date());
+            const endDate = endDateInput.value || startDate;
+            const maxTemp = parseInt(maxTempInput.value || '75', 10);
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                setErrorMessage("End date cannot be earlier than start date.");
+                renderRecommendations([]);
+                selectedCity = null;
+                updateMap();
+                return;
+            }
+
+            const startMonth = new Date(startDate).getUTCMonth() + 1;
+            const filtered = cityData.filter(city => city.avgHighs[startMonth] <= maxTemp);
+            
+            // Shuffle and store
+            availableCities = [...filtered].sort(() => 0.5 - Math.random());
+            
+            const initialRecs = availableCities.slice(0, 5);
+            currentIndex = 5;
+            renderRecommendations(initialRecs);
+            if(initialRecs.length === 0) {
+                 selectedCity = null;
+                 updateMap();
+            }
+        };
+
+        const getMoreRecommendations = () => {
+            if (currentIndex >= availableCities.length) {
+                setErrorMessage("No more unique destinations to show. Try new criteria!");
+                return;
+            }
+            setErrorMessage('');
+            const nextIndex = currentIndex + 5;
+            const newRecs = availableCities.slice(currentIndex, nextIndex);
+            currentIndex = nextIndex;
+            renderRecommendations(newRecs);
+        };
+        
+        // --- Event Listeners and Initializer ---
+        function init() {
+            // Set default values
+            startDateInput.value = formatDateForInput(new Date());
+            endDateInput.value = formatDateForInput(new Date());
+            maxTempInput.value = '75';
+
+            // Attach event listeners
+            listBtn.addEventListener('click', getRecommendations);
+            moreBtn.addEventListener('click', getMoreRecommendations);
+
+            // Initial load
+            getRecommendations();
+        }
+
+        // Run the app
+        init();
+
+    </script>
+</body>
+</html>
